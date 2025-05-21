@@ -8,6 +8,8 @@ def format_clippings(input_filename='clippings.md', output_filename='exports/for
 
     Expected input format per clipping:
     Yellow highlight | Page: X
+    or
+    Yellow highlight | Location: X
     <empty line>
     Highlight text line 1
     Highlight text line 2 (optional)
@@ -19,7 +21,11 @@ def format_clippings(input_filename='clippings.md', output_filename='exports/for
     Output format per clipping:
     "Consolidated highlight text..." (page: X)
     or
+    "Consolidated highlight text..." (location: X)
+    or
     "Consolidated highlight text..." (Note: XXX, page: X)
+    or
+    "Consolidated highlight text..." (Note: XXX, location: X)
     """
     input_filepath = os.path.abspath(input_filename)
     output_filepath = os.path.abspath(output_filename)
@@ -41,10 +47,11 @@ def format_clippings(input_filename='clippings.md', output_filename='exports/for
             processed_count = 0
             while i < len(lines):
                 line = lines[i].strip()
-                # Check for the highlight marker line
-                match = re.match(r"Yellow highlight \| Page: (\d+)", line)
+                # Check for the highlight marker line - now matches both Page and Location
+                match = re.match(r"Yellow highlight \| (Page|Location): (\d+)", line)
                 if match:
-                    page_number = match.group(1)
+                    location_type = match.group(1).lower()  # 'page' or 'location'
+                    number = match.group(2)
                     i += 1 # Move past the marker line
 
                     # Skip the expected empty line immediately after the marker
@@ -52,14 +59,14 @@ def format_clippings(input_filename='clippings.md', output_filename='exports/for
                         i += 1
                     # Optional: Add warning if format deviates, but proceed cautiously
                     # else:
-                    #     print(f"Warning: Expected empty line after marker for page {page_number}, around input line {i+1}.")
+                    #     print(f"Warning: Expected empty line after marker for {location_type} {number}, around input line {i+1}.")
 
                     highlight_text_lines = []
                     # Read the highlight text lines until an empty line or next marker or EOF
                     while i < len(lines):
                         current_line_stripped = lines[i].strip()
                         # Stop if it's an empty line or the start of the next highlight
-                        if current_line_stripped == "" or re.match(r"Yellow highlight \| Page: (\d+)", current_line_stripped):
+                        if current_line_stripped == "" or re.match(r"Yellow highlight \| (?:Page|Location): (\d+)", current_line_stripped):
                              break
                         # Stop also if it's a note line (don't include note in highlight text)
                         if current_line_stripped.startswith("Note:"):
@@ -85,11 +92,11 @@ def format_clippings(input_filename='clippings.md', output_filename='exports/for
                         # Escape existing double quotes within the highlight text
                         full_highlight_text = full_highlight_text.replace('"', '\\"')
 
-                        # Format the output line based on whether a note was found
+                        # Format the output line based on whether a note was found and the location type
                         if note_text:
-                            formatted_line = f'"{full_highlight_text}" (Note: {note_text}, page: {page_number})\n\n'
+                            formatted_line = f'"{full_highlight_text}" (Note: {note_text}, {location_type}: {number})\n\n'
                         else:
-                            formatted_line = f'"{full_highlight_text}" (page: {page_number})\n\n'
+                            formatted_line = f'"{full_highlight_text}" ({location_type}: {number})\n\n'
 
                         outfile.write(formatted_line)
                         processed_count += 1
